@@ -1,0 +1,5 @@
+*.pyc
+*.sav
+*.smpl
+*.pt
+test*.txt
