@@ -77,37 +77,13 @@ class AttentionModel(nn.Module):
         self.checkpoint_encoder = checkpoint_encoder
         self.shrink_size = shrink_size
 
-        # Problem specific context parameters (placeholder and step context dimension)
-        if self.is_vrp or self.is_orienteering or self.is_pctsp:
-            # Embedding of last node + remaining_capacity / remaining length / remaining prize to collect
-            step_context_dim = embedding_dim + 1
-
-            if self.is_pctsp:
-                node_dim = 4  # x, y, expected_prize, penalty
-            else:
-                node_dim = 3  # x, y, demand / prize
-
-            # Special embedding projection for depot node
-            self.init_embed_depot = nn.Linear(2, embedding_dim)
-            
-            if self.is_vrp and self.allow_partial:  # Need to include the demand if split delivery allowed
-                self.project_node_step = nn.Linear(1, 3 * embedding_dim, bias=False)
-        elif problem.NAME == "tsp":  # TSP
-            assert problem.NAME == "tsp", "Unsupported problem: {}".format(problem.NAME)
-            step_context_dim = 2 * embedding_dim  # Embedding of first and last node
-            node_dim = 2  # x, y
-            
-            # Learned input symbols for first action
-            self.W_placeholder = nn.Parameter(torch.Tensor(2 * embedding_dim))
-            self.W_placeholder.data.uniform_(-1, 1)  # Placeholder should be in range of activations
-        else:
-            assert problem.NAME == "nc", "Unsupported problem: {}".format(problem.NAME)
-            step_context_dim =  embedding_dim  # Embedding of first and last node
-            node_dim = num_route_features  # x, y
-            
-            # Learned input symbols for first action
-            self.W_placeholder = nn.Parameter(torch.Tensor(embedding_dim))
-            self.W_placeholder.data.uniform_(-1, 1)  # Placeholder should be in range of activations            
+        assert problem.NAME == "nc", "Unsupported problem: {}".format(problem.NAME)
+        step_context_dim =  embedding_dim  # Embedding of first and last node
+        node_dim = num_route_features  # x, y
+        
+        # Learned input symbols for first action
+        self.W_placeholder = nn.Parameter(torch.Tensor(embedding_dim))
+        self.W_placeholder.data.uniform_(-1, 1)  # Placeholder should be in range of activations            
 
         self.init_embed = nn.Linear(node_dim, embedding_dim)
 
@@ -269,9 +245,6 @@ class AttentionModel(nn.Module):
                     selected = torch.zeros_like(selected)
             else:
                 selected = selectedBefore[:,i]
-                # print('i, selected: ', i, selected)
-                
-            
 
             state = state.update(selected)
 
@@ -290,11 +263,6 @@ class AttentionModel(nn.Module):
 
             i += 1
             
-            # print("state.all_finished(nr_routes): ", state.all_finished(nr_routes))
-    
-        # print("sequences", sequences)
-        # print("torch.stack(sequences, 1", torch.stack(sequences, 1))
-        # Collected lists, return Tensor
         return torch.stack(outputs, 1), torch.stack(sequences, 1)
 
     def sample_many(self, input, batch_rep=1, iter_rep=1):
@@ -376,12 +344,6 @@ class AttentionModel(nn.Module):
 
         # Compute the mask
         mask = state.get_mask()
-
-        # print("query", query)
-        # print("glimpse_K", glimpse_K)
-        # print("glimpse_V", glimpse_V)
-        # print("logit_K", logit_K)
-        # print("mask", mask)
         
         # Compute logits (unnormalized log_p)
         log_p, glimpse = self._one_to_many_logits(query, glimpse_K, glimpse_V, logit_K, mask)
@@ -410,144 +372,19 @@ class AttentionModel(nn.Module):
         current_node = state.get_current_node()
         batch_size, num_steps = current_node.size()
 
-        if self.is_vrp:
-            # Embedding of previous node + remaining capacity
-            if from_depot:
-                # 1st dimension is node idx, but we do not squeeze it since we want to insert step dimension
-                # i.e. we actually want embeddings[:, 0, :][:, None, :] which is equivalent
-                return torch.cat(
-                    (
-                        embeddings[:, 0:1, :].expand(batch_size, num_steps, embeddings.size(-1)),
-                        # used capacity is 0 after visiting depot
-                        self.problem.VEHICLE_CAPACITY - torch.zeros_like(state.used_capacity[:, :, None])
-                    ),
-                    -1
-                )
-            else:
-                return torch.cat(
-                    (
-                        torch.gather(
-                            embeddings,
-                            1,
-                            current_node.contiguous()
-                                .view(batch_size, num_steps, 1)
-                                .expand(batch_size, num_steps, embeddings.size(-1))
-                        ).view(batch_size, num_steps, embeddings.size(-1)),
-                        self.problem.VEHICLE_CAPACITY - state.used_capacity[:, :, None]
-                    ),
-                    -1
-                )
-        elif self.is_orienteering or self.is_pctsp:
-            return torch.cat(
-                (
-                    torch.gather(
-                        embeddings,
-                        1,
-                        current_node.contiguous()
-                            .view(batch_size, num_steps, 1)
-                            .expand(batch_size, num_steps, embeddings.size(-1))
-                    ).view(batch_size, num_steps, embeddings.size(-1)),
-                    (
-                        state.get_remaining_length()[:, :, None]
-                        if self.is_orienteering
-                        else state.get_remaining_prize_to_collect()[:, :, None]
-                    )
-                ),
-                -1
-            )
-        elif self.is_nc:
+        if self.is_nc:
             
             if num_steps == 1:  # We need to special case if we have only 1 step, may be the first or not
                 if state.i.item() == 0:
                     # First and only step, ignore prev_a (this is a placeholder)
                     return self.W_placeholder[None, None, :].expand(batch_size, 1, self.W_placeholder.size(-1))
                 else:
-                    
-                    # # print("num_steps: ", num_steps)
-                    # # print("embeddings.size(): ", embeddings.size())
-                    # # print('state.visited_', state.visited_)
-                    
-                    # # print('state.i.item(): ', state.i.item()) #, state.visited.sum())
-                    
-                    # # print("torch.nonzero(state.visited_, as_tuple=True)", torch.nonzero(state.visited_, as_tuple=True))
-                    
-                    # # print('torch.nonzero(state.visited_, as_tuple=True)[2].view(embeddings.size()[0], -1, 1)', torch.nonzero(state.visited_, as_tuple=True)[2].view(embeddings.size()[0], -1, 1))
-                    # # print('torch.nonzero(state.visited_, as_tuple=True)[2].view(2, -1, 1).expand(batch_size, 2, embeddings.size(-1))', 
-                    # #       torch.nonzero(state.visited_, as_tuple=True)[2].view(embeddings.size()[0], -1, 1).expand(batch_size, state.i.item(), embeddings.size(-1)))
-                    
-                    # print('embeddings.gather(1,torch.nonzero(state.visited_, as_tuple=True)[2].view(2, -1, 1).expand(batch_size, 2, embeddings.size(-1))).view(batch_size, 1, -1).size()',     
-                    # embeddings.gather(
-                    #     1,
-                    #     torch.nonzero(state.visited_, as_tuple=True)[2].view(embeddings.size()[0], -1, 1).expand(batch_size, state.i.item(), embeddings.size(-1))
-                    #     ).size()
-                    # )
-                    
-                    # print('new_result.size()',     
-                    # embeddings.gather(
-                    #     1,
-                    #     torch.nonzero(state.visited_, as_tuple=True)[2].view(embeddings.size()[0], -1, 1).expand(batch_size, state.i.item(), embeddings.size(-1))
-                    #     ).sum(1)[:,None,:].size()
-                    # )
-                    
-                    # # print("state.first_a: ", state.first_a)
-                    # # print("current_node: ", current_node)
-                    # # print('torch.cat((state.first_a, current_node), 1)', torch.cat((state.first_a, current_node), 1))
-                    
-                    # # print('torch.cat((state.first_a, current_node), 1)[:, :, None]', torch.cat((state.first_a, current_node), 1)[:, :, None])
-                    
-                    # # print("torch.cat((state.first_a, current_node), 1)[:, :, None].expand(batch_size, 2, embeddings.size(-1))", torch.cat((state.first_a, current_node), 1)[:, :, None].expand(batch_size, 2, embeddings.size(-1)))
-                    
-                    # print("embeddings.gather(1,torch.cat((state.first_a, current_node), 1)[:, :, None].expand(batch_size, 2, embeddings.size(-1))).size()", embeddings.gather(
-                    #     1,
-                    #     torch.cat((state.first_a, current_node), 1)[:, :, None].expand(batch_size, 2, embeddings.size(-1))
-                    #     ).size()
-                    # )
-                    
-                    # print("result.size()): ", embeddings.gather(
-                    #     1,
-                    #     torch.cat((state.first_a, current_node), 1)[:, :, None].expand(batch_size, 2, embeddings.size(-1))
-                    # ).view(batch_size, 1, -1).size())
-                    # print("result: ", embeddings.gather(
-                    #     1,
-                    #     torch.cat((state.first_a, current_node), 1)[:, :, None].expand(batch_size, 2, embeddings.size(-1))
-                    # ).view(batch_size, 1, -1))
-                    
-                    
-                    
-                    
-                    
                     return embeddings.gather(
                         1,
                         torch.nonzero(state.visited_, as_tuple=True)[2].view(embeddings.size()[0], -1, 1).expand(batch_size, state.i.item(), embeddings.size(-1))
                         ).sum(1)[:,None,:]
                 
             assert False, "Don't know how to do multiple steps yet"
-            # More than one step, assume always starting with first
-            embeddings_per_step = embeddings.gather(
-                1,
-                current_node[:, 1:, None].expand(batch_size, num_steps - 1, embeddings.size(-1))
-            )
-            return torch.cat((
-                # First step placeholder, cat in dim 1 (time steps)
-                self.W_placeholder[None, None, :].expand(batch_size, 1, self.W_placeholder.size(-1)),
-                # Second step, concatenate embedding of first with embedding of current/previous (in dim 2, context dim)
-                torch.cat((
-                    embeddings_per_step[:, 0:1, :].expand(batch_size, num_steps - 1, embeddings.size(-1)),
-                    embeddings_per_step
-                ), 2)
-            ), 1)
-        else:  # TSP
-            if num_steps == 1:  # We need to special case if we have only 1 step, may be the first or not
-                if state.i.item() == 0:
-                    # First and only step, ignore prev_a (this is a placeholder)
-                    return self.W_placeholder[None, None, :].expand(batch_size, 1, self.W_placeholder.size(-1))
-                else:
-                    return embeddings.gather(
-                        1,
-                        torch.cat((state.first_a, current_node), 1)[:, :, None].expand(batch_size, 2, embeddings.size(-1))
-                    ).view(batch_size, 1, -1)
-                
-                
             # More than one step, assume always starting with first
             embeddings_per_step = embeddings.gather(
                 1,

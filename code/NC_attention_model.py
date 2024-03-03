@@ -1,39 +1,14 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Sep 18 13:23:41 2023
-
-@author: feijen
-"""
-
-
-
 import os
-# import json
-# import pprint as pp
-
 import joblib
 import torch
 import torch.optim as optim
-# from tensorboard_logger import Logger as TbLogger
 from torch.nn import DataParallel
-
-# from nets.critic_network import CriticNetwork
-# from options import get_options
-#from attention.train import get_inner_model
-# from reinforce_baselines import NoBaseline, ExponentialBaseline, CriticBaseline, RolloutBaseline, WarmupBaseline
 from attention.nets.attention_model import AttentionModel
 from attention.nets.attention_model import set_decode_type
 from torch.utils.data import DataLoader
-# from nets.pointer_network import PointerNetwork, CriticNetworkLSTM
 from attention.utils import torch_load_cpu, load_problem, move_to
-
 from tqdm import tqdm
-
 import numpy as np
-
-# global use_cuda, device
-
 global instanceName, testName, currentRunNumber
 
 def get_inner_model(model):
@@ -82,7 +57,7 @@ def init():
     # Initialize optimizer
     optimizer = optim.Adam(
         [{'params': model.parameters(), 'lr': lr_model}]
-    ) #I deleted something here to do with the baseline and learnable parameters..?
+    ) 
 
 def rollout(model, dataset, eval_batch_size, no_progress_bar):
     # Put in greedy evaluation mode!
@@ -106,12 +81,8 @@ def sample_nhood_attention(features, nrRoutes):
     set_decode_type(model, "greedy")
     model.eval()
 
-    # anchor = anchor_recommendations[0]
-    # recs = anchor_recommendations[1:]
     features = torch.Tensor([features])
     _, _, pi = model(move_to(features,device),return_pi=True, nr_routes=nrRoutes)
-    
-    # print(pi)
     
     return pi[0]
 
@@ -131,15 +102,11 @@ def compute_cost(improvement, baseline):
 def train(features, pi, improvement,nrRoutes, continuousLearning, iteration):
     global newMemory, baseline, instanceName, testName, currentRunNumber
     
-    # print(len(features))
-    
     newMemory.append((features, pi, improvement))
     
     if len(newMemory) >= trainfreq:
         
         baseline = update_baseline(baseline, newMemory)
-        
-        # print('basleline updated to ', baseline)
         
         costs = torch.Tensor([compute_cost(improvement, baseline) for _,_,improvement in newMemory])
         # in case of experience replay somehow need to save these costs for later
@@ -176,32 +143,14 @@ def update_with_sample(features, selected, nrRoutes, costs):
     
     x = torch.Tensor([features])
     x = move_to(x, device)
-    
-    # print('trainmemory', trainMemory)
-    
-    # print('[selected for _,selected,_ in trainMemory]', [selected for _,selected,_ in trainMemory])
-    # print('torch.stack([selected for _,selected,_ in trainMemory])', torch.stack([selected for _,selected,_ in trainMemory]))
-    
-    # print(selected.size(), selected)
-    
-    # selected = torch.Tensor([selected])
-    
-    # selected = torch.stack([selected for _,selected,_ in trainMemory])
-
-    # Evaluate model, get costs and log probabilities
+ 
     _, log_likelihood = model(x, nr_routes=nrRoutes, pi = selected[None])
-
-    # print(costs)
 
     # Calculate loss
     loss = ((costs) * log_likelihood).mean()
     
     optimizer.zero_grad()
     loss.backward()
-
-    # Perform backward pass and optimization step
-    # Clip gradient norms and get (clipped) gradient norms for logging
-    # grad_norms = clip_grad_norms(optimizer.param_groups, opts.max_grad_norm)
     optimizer.step()
     
     

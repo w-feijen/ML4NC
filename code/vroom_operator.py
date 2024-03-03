@@ -1,18 +1,5 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Nov  5 16:11:42 2021
-
-@author: WFN2
-"""
-
-import data_structure
-import data_reader
-import numpy as np
-from subprocess import check_output, PIPE, Popen
 import math
 import json
-import os
-
 import vroom
 
 CUSTOM_PRECISION = 1000
@@ -117,40 +104,12 @@ def get_subproblem_json(vehicles, use_warm_start = True):
 
 
 def vroom_subproblem( subproblem_json ):
-    '''Calls vroom to solve the subproblem_json and returns the dictionary of the output'''
-    
-    command_length_limit = 120000
-    
-    if len(subproblem_json) > command_length_limit:
-        
-        subproblem_json_temp_file = f'subproblem_json_temp_file_{np.random.randint(1000000)}.txt'
-        with open(subproblem_json_temp_file, 'w') as f: f.write(subproblem_json)
-        
-        p = Popen(['vroom', '-x', '5', '-i', subproblem_json_temp_file], stdout=PIPE)    
-        result = p.communicate()[0]
-        try:    
-            os.remove(subproblem_json_temp_file)
-        except:
-            print('unable to remove', subproblem_json_temp_file)
-            pass
-    else:
-        p = Popen(['vroom', '-x', '5', subproblem_json], stdout=PIPE)
-        result = p.communicate()[0]
-    
-    
-    
-    return json.loads(result)
-
-def vroom_subproblem2( subproblem_json ):
     instance = vroom.Input()
     instance._from_json(subproblem_json, False)
     
     solution = instance.solve(exploration_level=vroom_exploration_level, nb_threads=4)
     
-    # print(solution.summary.cost)
-    
     return solution.to_dict()
-    # print(solution.routes[["vehicle_id", "type", "arrival", "location_index", "id"]])
     
 def add_subsolution_to_solution(old_vehicles, subsolution_result):
     
@@ -187,15 +146,7 @@ def vroom_insert(vehicles, debug):
     use_warm_start = True
     subproblem_json = get_subproblem_json(vehicles, use_warm_start)
     
-    # print(subproblem_json)
-    
-    # print('current solution\n', temp_sol)
-    # print('vehicle chosen:', vehicles)
-    
-    subsolution_result = vroom_subproblem2( subproblem_json )
-    # subsolution_result = vroom_subproblem( subproblem_json )
-    
-    # print(subsolution_result)
+    subsolution_result = vroom_subproblem( subproblem_json )
     
     if subsolution_result['code'] == 0:
         if subsolution_result['summary']['unassigned']==0:

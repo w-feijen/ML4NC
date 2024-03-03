@@ -1,12 +1,4 @@
-"""
-Created on Wed Oct  9 09:24:30 2019
-
-@author: WFN2
-"""
-
 import numpy as np
-#import plotly.graph_objects as go
-#import plotly.offline as py
 import math
 from os import path
 import copy
@@ -573,18 +565,6 @@ class instance(object):
         for c in self.customers + [self.depot]:
             result += repr(c) + "\n"
         return result
-    def plot(self):
-        x = np.array([c.x for c in (self.customers + [self.depot])])
-        y = np.array([c.y for c in (self.customers + [self.depot])])
-        text = [str(c.nr) for c in (self.customers + [self.depot])]
-        fig = go.Figure(layout_title_text=self.name)
-        fig.add_trace(go.Scatter(x=x, y=y, text=text,textposition='top center',
-                    mode='markers+text'))
-        fig.update_layout(yaxis = dict(scaleanchor = "x",scaleratio = 1))
-        #fig.show()
-        #pio.write_image(fig, 'images/instance_%s.pdf' %self.name)
-        py.plot(fig, filename='../images/instance_%s.html' %self.name)
-        
     
     def calculate_distances(self):
         result = np.zeros((len(self.customers)+1, len(self.customers)+1))
@@ -655,9 +635,6 @@ class instance(object):
         c1_is_earlier = c1.start + c1.service <= c2.start + c2.service
         early_client, late_client = (c1,c2) if c1_is_earlier else (c2,c1)
         
-        # print('early client:', early_client)
-        # print('late_client:', late_client)
-        
         if not distance:
             distance = self.distance(early_client, late_client)
         
@@ -666,21 +643,13 @@ class instance(object):
         minimum_lateness_1 =     max(0, earliest_possible_arrival_at_late - late_client.end)
         minimum_waiting_time_1 = max(0, late_client.start - latest_possible_arrival_at_late)
         
-        # print("minimum_lateness", minimum_lateness_1)
-        # print("minimum_waiting_time", minimum_waiting_time_1)
-        
         early_client, late_client = (c1,c2) if not c1_is_earlier else (c2,c1)
         
-        # print('early client:', early_client)
-        # print('late_client:', late_client)
         
         earliest_possible_arrival_at_late = early_client.start + early_client.service +  distance
         latest_possible_arrival_at_late =   early_client.end   + early_client.service + distance
         minimum_lateness_2 =     max(0, earliest_possible_arrival_at_late - late_client.end)
         minimum_waiting_time_2 = max(0, late_client.start - latest_possible_arrival_at_late)
-        
-        # print("minimum_lateness", minimum_lateness_2)
-        # print("minimum_waiting_time", minimum_waiting_time_2)
         
         allow_lateness_in_puzzle = False
         if allow_lateness_in_puzzle == False:
@@ -827,17 +796,7 @@ class solution(object):
             instance.nr_vehicles = len(vehicles)
         return cls(instance, vehicles, True)
         
-        # customers = [instance.customers[7], instance.customers[64]]
-        
-        # import iteration_operators
-        # sol, msg = iteration_operators.shaw_insertion(sol, customers, 3)
-        
-        # return sol
-    
-    # def calculate_distance(self):
-    #     return self.total_distance
-        
-    # def calculate_trucks(self):
+
         
     def update_cost(self, check=True):
         
@@ -951,86 +910,7 @@ class solution(object):
         for v in self.vehicles:
             result += repr(v) + ":\t" f"{v.distance:6.2f}\t{v.tw_violation:8.2f}\t" + repr(v.route) + "\n"
             result += v.schedule_string() + "\n\n"
-        print(result)
-    
-    def plot(self, name="", vehicles=None):
-        if vehicles is None:
-            vehicles = self.vehicles
-        
-        customers = []
-        for v in vehicles:
-            customers += v.route
-        
-        x = np.array([c.x for c in (customers + [self.instance.depot])])
-        y = np.array([c.y for c in (customers + [self.instance.depot])])
-        names = [repr(c.nr) for c in (customers+[self.instance.depot])]
-        fig = go.Figure()
-        time_windows = []
-        
-        customers_in_solution = []
-        for v in vehicles:
-            customers_in_solution += v.route
-            
-        customers_in_solution.sort(key=lambda x: x.nr)
-        
-        for c in (customers + [self.instance.depot]):
-            if c in customers_in_solution:
-                time_windows +=  [f"[{c.start},{c.end}],{self.find_delivery(c).arrival:.2f}"]
-            else:
-                time_windows += [f"[{c.start},{c.end}]"]
-        points = go.Scatter(x=x, y=y,text=names, hovertext=time_windows, textposition='top center',
-                    mode='markers+text', marker=dict(color='black'))
-        fig.add_trace(points)
-        layout = go.Layout()
-        
-        # lateness = []
-        # for c in (customers):
-        #     if c in customers_in_solution:
-        #         lateness += [self.find_delivery(c).lateness_value]
-        #     else:
-        #         lateness += [0]
-        
-        #lateness = np.array([self.find_delivery(c).lateness_value for c in customers_in_solution])
-        
-        # lateness_points = go.Scatter(x=x[:-1], y=y[:-1],mode='markers', marker=dict(color='red', size=lateness*10), hoverinfo='skip')
-        # fig.add_trace(lateness_points)
-        
-        waiting_time = []
-        for c in customers:
-            if c in customers_in_solution:
-                waiting_time += [self.find_delivery(c).waiting_time]
-            else:
-                waiting_time += [0]
-        
-        
-        waiting_time_points = go.Scatter(x=x[:-1], y=y[:-1],mode='markers', marker=dict(color='blue', size=waiting_time*10), hoverinfo='skip')
-        fig.add_trace(waiting_time_points)
-        
-        for v in vehicles:
-            complete_route = [self.instance.depot] + v.route + [self.instance.depot]
-            x = [c.x for c in complete_route]
-            y = [c.y for c in complete_route]
-            
-            route = go.Scatter(x=x, y=y, mode='lines', name=f"{v.nr}: {v.distance:.2f}", hoverinfo='skip')
-            fig.add_trace(route)
-            
-            #for c1, c2 in v.get_route_segs():
-            #    shapes += [{'type':'line',
-            #                'x0':c1.x,
-            #                'x1':c2.x,
-            #                'y0':c1.y,
-            #                'y1':c2.y,
-            #                'line': {'color': colors[v.nr % len(colors)] }}]
-        #layout['shapes'] = shapes
-        layout['title'] = f"{self.instance.name}_{name}: {self.total_distance:.2f} + {self.total_tw_violation:.2f} +{cost_per_violation}*{self.nr_tw_violations:.2f} = {self.total_value:.2f}"
-        
-        
-        fig.update_layout(layout)
-        fig.update_layout(yaxis = dict(scaleanchor = "x",scaleratio = 1))
-        
-        #pio.write_image(fig, 'images/sol_%s%s.pdf' %(self.instance.name, "_"+name))
-        py.plot(fig, filename='..//images/sol_%s%s.html' %(self.instance.name, "_"+name))
-        
+        print(result)   
         
     def is_better_than(self, solution2):
         '''Changed into: only check difference in sum of violation + distance'''
@@ -1055,188 +935,6 @@ class solution(object):
                     self.vehicles.remove(v)
                 self.update_cost(False)
                 return
-    
-    def insert(self, customer):
-        '''Insert customer at place where distance increase is least in route where it still fits'''
-        
-        #TODO: think of idea: what if you do the loop over i in reversed order, so try to add the customer in the back first. 
-        #Then keep track of the tw_violation of the nodes after the inserted node. If that exceeds the best score, you can end the loop
-        
-        #First we find the customer which is also in the instance 
-        customer = next(c for c in self.instance.customers if c.nr == customer.nr)
-        
-        
-        min_distance_increase = np.infty
-        vehicle_index_to_replace = -1
-        #print("\n\ntry to add ", customer)
-        for v_index, v in enumerate(self.vehicles):
-            if v.capacity - v.load >= customer.demand:
-                #print("to vehicle", v, " with current load: ", v.load)
-                #print(repr(v) + ": " + repr(v.route), "\n")
-                for i in range(len(v.route) + 1):
-                    temp_route = [c for c in v.route]
-                    temp_route.insert(i,customer)
-                    
-                                   
-                    temp_vehicle = vehicle(self.instance, v.nr, v.capacity, temp_route)
-                    
-                    if not self.instance.restrict_nr_vehicles:
-                        if not temp_vehicle.check_time_windows()[0]:
-                            continue
-                        
-                    temp_distance_increase = temp_vehicle.distance - v.distance
-                    temp_tw_violation_increase = 0
-                    if self.instance.restrict_nr_vehicles:
-                        temp_tw_violation_increase = temp_vehicle.tw_violation - v.tw_violation
-                    
-                    if temp_distance_increase + temp_tw_violation_increase < min_distance_increase:
-                        min_distance_increase = temp_distance_increase + temp_tw_violation_increase
-                        new_vehicle = vehicle(self.instance, v.nr, v.capacity, [c for c in temp_route])
-                        vehicle_index_to_replace = v_index
-
-                    #print("temp_route:", temp_route)
-                    #print("distanc_inc:", temp_distance_increase, "min dist inc:", min_distance_increase)
-        msg_2 = ""
-        if vehicle_index_to_replace < 0:
-            #create new route because customer doesn't fit in existing one
-            assert not self.instance.restrict_nr_vehicles, "You should always be able to add customer to some of the existing vehicles\n " + repr(self) + repr(customer)
-            new_vehicle_nr = self.find_first_free_veh_nr()
-            new_vehicle = vehicle(self.instance, new_vehicle_nr, self.instance.capacity, [customer] )
-            self.vehicles += [new_vehicle]
-            msg ="customer " + repr(customer) + " is added to new route"
-        else:
-            msg_2 = str(round(self.vehicles[vehicle_index_to_replace].tw_violation - new_vehicle.tw_violation,2)) + ", "
-            self.vehicles[vehicle_index_to_replace] = new_vehicle
-            msg = "customer " + repr(customer) + " is added to " + repr(new_vehicle)
-        return msg_2
-    
-    
-    def find_cheapest_places_to_add(self, customer, discrepancy, allow_tw_violations):
-        '''Tries to add customer to all locations in sol. 
-        Returns a list of solutions of length discrepancy + 1, which are the cheapest options to insert the customer in order.
-        (+1 because 0, 1, 2, ... , discrepancy different soltuions)'''
-        
-        best_sols = [None] * (discrepancy + 1)
-        best_sols_2 = [None] * (discrepancy + 1)
-        best_sols_increases = [np.infty] * (discrepancy + 1)
-        
-        info_to_create_sols = [None] * (discrepancy + 1)
-        
-        nr_feasible_insert_positions = 0
-        
-        #print('Finding cheapest place to add', customer)
-        
-        printing = False
-        
-        min_total_value_increase = np.infty
-        
-        for v_index, v in enumerate(self.vehicles):
-            #continue if customer does not fit
-            if v.capacity - v.load < customer.demand:
-                continue
-            if printing:
-                print(v.nr)
-            for i in range(len(v.route) + 1):
-                temp_route = [c for c in v.route]
-                temp_route.insert(i,customer)
-                
-                #TODO: delete test_value
-
-                
-                if allow_tw_violations:
-                    temp_tw_violation_increase_nr, temp_tw_violation_increase, temp_distance_increase, temp_service_delay, test_value = v.check_add_at(customer, i, allow_tw_violations)
-                    temp_increase = temp_distance_increase + temp_tw_violation_increase + temp_tw_violation_increase_nr + temp_service_delay
-                    
-                    nr_feasible_insert_positions += temp_tw_violation_increase == 0.0
-                    
-                    if temp_tw_violation_increase + temp_tw_violation_increase_nr + temp_distance_increase < min_total_value_increase:
-                        #min_total_value_increase: This will be the minimum amount of cost added to the objective value
-                        #This is somewhat different from the temp_increase because the service delay is not taken into account
-                        min_total_value_increase = temp_tw_violation_increase + temp_tw_violation_increase_nr + temp_distance_increase
-                    
-                    test = False
-                    if test:
-                        temp_vehicle = vehicle(self.instance, v.nr, v.capacity, temp_route)
-                        temp_tw_violation_increase_test = temp_vehicle.tw_violation - v.tw_violation
-                        
-                        temp_tw_violation_increase_nr_test = temp_vehicle.nr_tw_violation_costs - v.nr_tw_violation_costs
-                        
-                        assert temp_tw_violation_increase_test == temp_tw_violation_increase, f'actual increase: {temp_tw_violation_increase_test}, our increase: {temp_tw_violation_increase}'
-                        
-                        assert temp_tw_violation_increase_nr_test == temp_tw_violation_increase_nr, f'actual increase: {temp_tw_violation_increase_nr_test}, our increase: {temp_tw_violation_increase_nr}'
-                else:
-                    is_allowed, temp_distance_increase, test_value = v.check_add_at(customer,i, allow_tw_violations)
-                    temp_increase = temp_distance_increase
-                    if not is_allowed:
-                        continue
-
-                #Check if solution at index j needs to be updated
-                j = discrepancy+1
-                
-                if printing:
-                    print(i, f'{temp_tw_violation_increase_nr}\t{temp_tw_violation_increase:.2f}\t{temp_distance_increase:.2f}')
-                
-                assert 0 <= j and j <= discrepancy + 1, f'{j} {discrepancy} {best_sols_increases}'
-                while j>0 and temp_increase < best_sols_increases[j-1] :
-                    
-                    
-                    
-                    #print(temp_increase, best_sols_increases)
-                    j -= 1
-                    assert 0 <= j and j <= discrepancy + 1, f'{j} {discrepancy} {best_sols_increases}'
-                    
-                if j < discrepancy + 1:
-
-                    info_to_create_sol = (v_index, i, temp_distance_increase, temp_service_delay)
-                    
-                    best_sols_increases = best_sols_increases[:j] + [temp_increase] + best_sols_increases[j:-1]
-                    info_to_create_sols = info_to_create_sols[:j] + [info_to_create_sol] + info_to_create_sols[j:-1]
-                    # assert len(best_sols_2) == discrepancy + 1
-                    # assert len(best_sols_increases) == discrepancy + 1
-        if printing:
-            print('info_to_create_sols', info_to_create_sols)
-        
-        # for k,info_to_create_sol in enumerate(info_to_create_sols):
-        #     v_index, i, temp_distance_increase = info_to_create_sol
-            
-        #     v = self.vehicles[v_index]
-            
-        #     temp_route = [c for c in v.route]
-        #     temp_route.insert(i,customer)
-            
-        #     new_sol = self.get_copy(check_solution=False)#copy.deepcopy(self)
-        #     deliveries_we_can_keep = [copy.copy(delivery) for delivery in v.deliveries[:i+1]]
-        #     new_sol.vehicles[v_index] = vehicle(self.instance, v.nr, v.capacity, temp_route, v.distance + temp_distance_increase, v.load + customer.demand,deliveries_we_can_keep)
-            
-            
-        #     #TODO: check if this update_cost is necessary?
-        #     new_sol.update_cost(False)
-            
-        #     best_sols[k] = new_sol
-            
-        
-        assert len(best_sols_increases) == discrepancy + 1
-        
-        
-        # assert (best_sols_increases[0] + self.total_value) == best_sols[0].total_value
-        
-        # print('adding customer', customer.nr, 'discr', discrepancy, f'best_sols values:', [test.total_value for test in best_sols]) 
-        #return best_sols, nr_feasible_insert_positions
-        
-        return (best_sols_increases[0]), nr_feasible_insert_positions, info_to_create_sols, min_total_value_increase
- 
-    def insert_multiple(self, customers, plot = False):
-        msg = "["
-        for c in customers:
-            msg += self.insert(c)
-            self.update_cost(check=False)
-            if plot:
-                self.plot("temp"+repr(c))
-        msg = msg[:-2]
-        msg += "]"
-
-        
-        return msg
             
     def find_first_free_veh_nr(self):
         for i, v in enumerate(self.vehicles):
@@ -1260,57 +958,7 @@ class solution(object):
             assert False, 'Cannot find delivery for depot, since the depot has many deliveries'
             return -1
         return self.find_vehicle(customer).get_delivery(customer)
-            
-    def get_closeness_old(self, customer, use_temporal_distance, cus_vehicle):
-        'This is probably not a feature we want to use anymore'
-        '''computes the minimum distance from this customer to the closest customer in another route'''
-        #TODO: might also be very interesting to not calculate the distance to the closest customer in another route, but to the actual (line) of the other route, because this might be much closer
-        #You could maybe use the distance increase for that, for adding the customer to the other route.
-        if customer == self.instance.depot:
-            assert False, 'Cannot compute closeness for depot'
-        closeness = np.infty
-        for vehicle in self.vehicles:
-            if vehicle.nr == cus_vehicle.nr:
-                continue
-            for c in vehicle.route:
-                dist_c_customer = self.instance.temporal_distance(customer, c) if use_temporal_distance else self.instance.distance(customer,c)
-                if dist_c_customer < closeness:
-                    closeness = dist_c_customer
-        return closeness
     
-    def get_closeness(self, customer, use_temporal_distance, vehicles):
-        '''For the customer, we calculate the distance to the centroids of all the other vehicles (except its own)
-        We return the minimum distance'''
-        if customer == self.instance.depot:
-            assert False, 'Cannot compute closeness for depot'
-            
-        assert use_temporal_distance == False
-            
-        # print(customer, customer.nr, customer.demand, customer.service, customer.start, customer.end)
-        # print(customer.x, customer.y)
-        
-        return min(v.distance_to_customer(customer) for v in vehicles if not customer in v.route)
-        
-        #Because we calculate with centroids, we cannot use temporaldistance
-        
-        #This takes longer so we do not use it:
-            # return min(v.distance_to_customer2(customer) for v in vehicles if not customer in v.route)
-            
-    def get_closeness_v2(self, c, cus_vehicle, other_customers, temporal):
-        '''Return the distance from c to the closest customer c' in other_customers, given that c' is not in cus_vehicle'''
-        for c2 in cus_vehicle.route:
-            assert not c2 in other_customers
-            
-        for n, distance in self.instance.sorted_distances(c, temporal):
-            if n in other_customers:
-                #if not n in cus_vehicle.route:
-                # assert False
-                return distance
-            
-        print( self.instance.sorted_distances(c, temporal) )
-        print(other_customers)
-        assert False, "something went wrong for " + str(c) + str(cus_vehicle)
-        
     def get_min_greedy_addition_cost(self, c, other_vehicles, dist_contribution, return_vehicle=False):
         if return_vehicle:
             values_after_before = [v.greedy_addition_cost(c) for v in other_vehicles]
@@ -1347,72 +995,6 @@ class solution(object):
             assert False, 'Cannot calculate average route distance for depot'
         vehicle = self.find_vehicle(customer)
         return vehicle.get_average_route_distance()
-    
-    def lower_bound_value(self):
-        '''A method which returns a lower bound for the total value for an incomplete solution
-        The lower bound consists of the total-value for the incomplete solution, + at least one edge for each customer which is not in the solution yet.
-        
-        Is not yet totally the same as in the paper, could be improved. 
-        
-        Also: needs checking if correct. 
-        I think it is incorrect, what if a customer can be added for free because it lies on an existing edge of the route, then it still might be skipped
-        '''
-        
-        customers_in_solution = []
-        for v in self.vehicles:
-            customers_in_solution += v.route
-        
-        customers_not_in_solution = [c for c in self.instance.customers if not c in customers_in_solution]
-        
-        
-        min_distance = [min([ self.instance.distance(c1,c2) for c2 in self.instance.customers+[self.instance.depot] if not c2 == c1]) for c1 in customers_not_in_solution]
-        
-        # print(min_distance)
-        # print(sum(min_distance))
-        return self.total_value + sum(min_distance)
-        
-    def shaw_relatedness(self, c1, c2):
-        '''Relatedness between two customers in a solution. Based on paper by shaw. 
-        In shaw, time windows are not taken into consideration, so not completely based on Shaw.
-        
-        In shaw:
-        Relatedness between c1 and c2  = 1/ (d(c1,c2) + V(c1,c2)),
-        where d(c1,c2) is the normalized distance between c1 and c2
-        where V(c1,c2) evaluates to 1 if c1 and c2 are the same route
-        
-        In our algorithm:
-        d(c1,c2) is the normalize temporal distance
-        '''
-        #test if c1 and c2 in same route
-        vehicle_c1 = self.find_vehicle(c1)
-        v_c1_c2 = not c2 in vehicle_c1.route
-        #get temporal distance
-        d_c1_c2 = self.instance.normalized_temporal_distance(c1,c2)
-        #d_c1_c2 = self.instance.normalized_distance(c1,c2)
-        return 1/(d_c1_c2 + v_c1_c2)
-
-    def shaw_relatedness_v2(self, c1, c2, c2_on_time):
-        '''Relatedness between two customers in a solution. Based on paper by shaw. 
-        In shaw, time windows are not taken into consideration, so not completely based on Shaw.
-        
-        In shaw:
-        Relatedness between c1 and c2  = 1/ (d(c1,c2) + V(c1,c2)),
-        where d(c1,c2) is the normalized distance between c1 and c2
-        where V(c1,c2) evaluates to 1 if c1 and c2 are on different routes
-        
-        In our algorithm:
-        d(c1,c2) is the normalize temporal distance
-        
-        Extra component added which makes a second client less relevant (related) if it is on time (by adding 1 if it is on time)
-        '''
-        #test if c1 and c2 in same route
-        vehicle_c1 = self.find_vehicle(c1)
-        v_c1_c2 = not c2 in vehicle_c1.route
-        #get temporal distance
-        d_c1_c2 = self.instance.normalized_temporal_distance(c1,c2)
-        #d_c1_c2 = self.instance.normalized_distance(c1,c2)
-        return 1/(d_c1_c2 + v_c1_c2 + c2_on_time)
-                
         
     def write(self, name, filename=None):
         #Write solution to file. Give a name for the solution and a filename will be generated, or giva a spcific filename

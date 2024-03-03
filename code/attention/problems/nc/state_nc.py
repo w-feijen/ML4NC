@@ -66,10 +66,8 @@ class StateNC(NamedTuple):
     def get_final_cost(self):
 
         assert self.all_finished()
-        # assert self.visited_.
         return 0
-        #return self.lengths + (self.loc[self.ids, self.first_a, :] - self.cur_coord).norm(p=2, dim=-1)
-
+        
     def update(self, selected):
 
         # Update the state
@@ -98,9 +96,7 @@ class StateNC(NamedTuple):
                              lengths=lengths, cur_coord=cur_coord, i=self.i + 1)
 
     def all_finished(self, nr_routes):
-        # Next to anchor route, we choose nr_routes steps
-        # print('Check if finished: self.i.item(): ', self.i.item(), "nr_routes + 1: ", nr_routes + 1)
-        
+        # Next to anchor route, we choose nr_routes steps 
         return self.i.item() >= nr_routes + 1
 
     def get_current_node(self):
