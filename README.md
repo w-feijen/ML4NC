@@ -13,43 +13,25 @@
     pip install pyvroom
 
 ## Run instructions 
-    cd ./ML4LNS/code/
-    python main.py [option1] [option2]
-Where [option1] is either:
-* 1: Run the oracle model
-* 2: Run the random model
-* 3: [default], Run the ML model. Indicate with [option2] which ML model should be read:
-    * 1: Run ML1
-    * 2: Run ML2
-    * 3: Run ML3
-    * 4: Run ML4
-    * 5: [default] Run ML5 
-* 4: Run data collection. Indicate with [option2] which data collection strategy should be used:
-    * 0: [default] Use random data collection strategy 
-    * 1: Use ML1 as data collection strategy
-    * 2: Use ML2 as data collection strategy
-    * 3: Use ML3 as data collection strategy
-    * 4: Use ML4 as data collection strategy
-
-## 1. Oracle model
-The LNS with the oracle model as neighborhood selection is done on the test instances (R1_10_1 up to R1_10_10). 
-The oracle model always selects the best of the given neighborhoods. 
-
-## 2. Random model
-The LNS with the random model as neighborhood selection is done on the test instances (R1_10_1 up to R1_10_10). 
-The random model selects one of the given neighborhoods at random.
-
-## 3. ML model
-The LNS with the ML model as neighborhood selection is done on the test instances (R1_10_1 up to R1_10_10). 
-The ML model uses machine learning to decide which of the given neighborhoods to select in an iteration.
-[option2] specifies which ML model should be used.
-
-## 4. Data Collection
-The LNS with the data collection is done on the train instances.
-For more info on the train instances, see the paper.  
-The data collection strategy (specified [option2]) decides how the data collection should make its neighborhood selection decisions.
-Features that are collected during data collection are output in the /ML4LNS/features/ folder. 
-
+    cd ./code/
+    python main.py [phase] [option]
+Where [phase] is either:
+* 0: To run the recommendations test. The neighborhood creation is random. The [option] is either:
+	* 0: To turn off recommendations
+	* 1: To turn on recommendations
+* 1: To run phase 1. This means the anchor route and the set of routes to choose from remain constant. The [option] is either:
+	* 0: To have random neighborhood creation
+	* 1: To have heuristic neighborhood creation
+	* 2: To have attention (RL) neighborhood creation
+* 2: To run phase 2. This means the anchor route varies per iteration, but the set of routes to choose from remains constant. The [option] is either:
+	* 0: To have random neighborhood creation
+	* 1: To have heuristic neighborhood creation
+	* 2: To have attention (RL) neighborhood creation
+* 3: To run phase 3. Both the anchor route and the set of routes to choose from vary. Like in the real-world application. The [option] is either:
+	* 0: To have random neighborhood creation
+	* 1: To have heuristic neighborhood creation
+	* 2: To have attention (RL) neighborhood creation
+	
 ## Output
 The output of a run consists of the average score at the end of a run for all the different instances. 
 Also the average run time and the average number of vehicles are in the output.

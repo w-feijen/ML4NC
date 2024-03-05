@@ -69,7 +69,7 @@ def main(filenames, phase, nc_option):
                 
 def accept(phase, temp_sol, best_sol):
     
-    if phase == 3:
+    if phase == 0 or phase == 3:
         return temp_sol.is_better_than(best_sol)
     else:
         return False
