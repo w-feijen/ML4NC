@@ -1,3 +1,5 @@
+__copyright__ = """Copyright Dassault Systèmes. All rights reserved."""
+
 import os
 import joblib
 import torch

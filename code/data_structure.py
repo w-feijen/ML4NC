@@ -1,3 +1,5 @@
+__copyright__ = """Copyright Dassault Systèmes. All rights reserved."""
+
 import numpy as np
 import math
 from os import path

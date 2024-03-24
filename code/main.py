@@ -1,3 +1,5 @@
+__copyright__ = """Copyright Dassault Systèmes. All rights reserved."""
+
 import sys
 import time
 from datetime import datetime

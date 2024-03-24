@@ -1,3 +1,5 @@
+__copyright__ = """Copyright Dassault Systèmes. All rights reserved."""
+
 test_filenames = [ 'R1_10_1.TXT',
                     'R1_10_2.TXT',
                     'R1_10_3.TXT',

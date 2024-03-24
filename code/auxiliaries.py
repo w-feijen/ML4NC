@@ -1,3 +1,5 @@
+__copyright__ = """Copyright Dassault Systèmes. All rights reserved."""
+
 import numpy as np
 from datetime import date, datetime
 import joblib

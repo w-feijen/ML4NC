@@ -1,3 +1,5 @@
+__copyright__ = """Copyright Dassault Systèmes. All rights reserved."""
+
 import torch
 from typing import NamedTuple
 from attention.utils.boolmask import mask_long2bool, mask_long_scatter

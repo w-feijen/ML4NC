@@ -1,3 +1,5 @@
+__copyright__ = """Copyright Dassault Systèmes. All rights reserved."""
+
 from attention.problems.nc.state_nc import StateNC
 
 class NC(object):
